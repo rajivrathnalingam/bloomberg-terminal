@@ -1,6 +1,7 @@
-import { useMemo } from "react";
-import { generatePriceHistory, NEWS_DATA } from "@/lib/mockData";
+import { useState, useEffect } from "react";
+import { NEWS_DATA } from "@/lib/mockData";
 import PriceChart from "../charts/PriceChart";
+import type { HistoricalPrice } from "@/lib/types";
 
 interface OverviewTabProps {
   ticker: string;
@@ -10,31 +11,56 @@ interface OverviewTabProps {
 }
 
 export default function OverviewTab({ ticker, companyName, quoteData, profile }: OverviewTabProps) {
-  const priceHistory = useMemo(() => generatePriceHistory(12), [ticker]);
+  const [priceHistory, setPriceHistory] = useState<HistoricalPrice[]>([]);
+  const [estimates, setEstimates] = useState<any>(null);
 
-  const price = quoteData?.price ?? 192.85;
-  const change = quoteData?.change ?? 1.36;
-  const changePct = quoteData?.changesPercentage ?? 0.71;
-  const pe = quoteData?.pe ?? 64.93;
-  const eps = quoteData?.eps ?? 2.97;
-  const marketCap = quoteData?.marketCap ?? 4.69e12;
-  const volume = quoteData?.volume ?? 175123602;
-  const high52 = quoteData?.yearHigh ?? 212.19;
-  const low52 = quoteData?.yearLow ?? 86.62;
-  const open = quoteData?.open ?? 191.49;
-  const dayHigh = quoteData?.dayHigh ?? 193.77;
-  const dayLow = quoteData?.dayLow ?? 187.40;
-  const prevClose = quoteData?.previousClose ?? 191.49;
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchHistory() {
+      try {
+        const res = await fetch(`/api/history/${ticker}?months=9`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setPriceHistory(data);
+          }
+        }
+      } catch { /* keep empty */ }
+    }
+    async function fetchEstimates() {
+      try {
+        const res = await fetch(`/api/estimates/${ticker}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (!cancelled) setEstimates(data);
+        }
+      } catch { /* keep empty */ }
+    }
+    fetchHistory();
+    fetchEstimates();
+    return () => { cancelled = true; };
+  }, [ticker]);
 
-  const employees = profile?.fullTimeEmployees ?? 36000;
-  const city = profile?.city ?? "SANTA CLARA";
-  const state = profile?.state ?? "CA";
-  const country = profile?.country ?? "US";
-  const website = profile?.website ?? "nvidia.com";
-  const ceo = profile?.ceo ?? "Jensen Huang";
-  const description = profile?.description ?? "Nvidia is a leading developer of graphics processing units. Traditionally, GPUs were used to enhance the experience on computing platforms, most notably in gaming applications on PCs. GPU use cases have since emerged as important semiconductors used in artificial intelligence to run large language models. Nvidia not only offers AI GPUs, but also a software platform, Cuda, used for AI model development and training. Nvidia is also expanding its data center networking solutions, helping to tie GPUs together to handle complex workloads.";
-  const classification = profile?.industry ?? "SEMICONDUCTORS & RELATED DEVICES";
-  const figi = "BBG000BDJQV0";
+  const price = quoteData?.price ?? 0;
+  const change = quoteData?.change ?? 0;
+  const changePct = quoteData?.changesPercentage ?? 0;
+  const pe = quoteData?.pe ?? 0;
+  const eps = quoteData?.eps ?? 0;
+  const marketCap = quoteData?.marketCap ?? 0;
+  const high52 = quoteData?.yearHigh ?? 0;
+  const low52 = quoteData?.yearLow ?? 0;
+  const dayHigh = quoteData?.dayHigh ?? 0;
+  const dayLow = quoteData?.dayLow ?? 0;
+  const divYieldTTM = quoteData?.dividendYieldTTM ?? 0;
+
+  const employees = profile?.fullTimeEmployees ?? 0;
+  const city = profile?.city ?? "";
+  const state = profile?.state ?? "";
+  const country = profile?.country ?? "";
+  const website = profile?.website ?? "";
+  const ceo = profile?.ceo ?? "";
+  const description = profile?.description ?? "";
+  const classification = profile?.industry ?? "";
 
   const formatMktCap = (v: number) => {
     if (v >= 1e12) return (v / 1e12).toFixed(2) + "T";
@@ -43,24 +69,21 @@ export default function OverviewTab({ ticker, companyName, quoteData, profile }:
     return v.toFixed(0);
   };
 
-  const sharesOut = marketCap / price;
+  const sharesOut = price > 0 ? marketCap / price : 0;
   const floatShares = sharesOut * 0.998;
-  const ytdChange = ((price - low52) / low52 * 100);
+  const ytdChange = low52 > 0 ? ((price - low52) / low52 * 100) : 0;
 
-  const estPe = 61.69;
-  const estEps = 3.21;
-  const estPeg = "N.A.";
-  const divYield = "N.A.";
-  const totRet12m = "52.29%";
-  const betaVsSPX = "N/A";
+  // Extract estimate data  
+  const estPe = estimates && Array.isArray(estimates) && estimates[0]?.estPe ? estimates[0].estPe : pe * 0.95;
+  const estEps = estimates && Array.isArray(estimates) && estimates[0]?.estEps ? estimates[0].estEps : eps * 1.08;
 
   return (
     <div className="flex-1 overflow-y-auto p-3" style={{ overscrollBehavior: "contain" }}>
       {/* Company Name & Info */}
       <div className="mb-2">
         <div className="flex justify-between items-start">
-          <h1 className="text-terminal-white font-bold text-base">{companyName || "NVIDIA CORP"}</h1>
-          <span className="text-terminal-dim text-xs">FIGI {figi}</span>
+          <h1 className="text-terminal-white font-bold text-base">{companyName || ticker}</h1>
+          <span className="text-terminal-dim text-xs">FIGI BBG000BDJQV0</span>
         </div>
         <div className="flex justify-between text-xs mt-0.5">
           <span className="text-terminal-cyan">6) BI Research Primer | BICO »</span>
@@ -96,7 +119,9 @@ export default function OverviewTab({ ticker, companyName, quoteData, profile }:
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-white">YTD Change/%</span>
-              <span className="text-terminal-green">+{(price - low52).toFixed(2)}/+{ytdChange.toFixed(2)}%</span>
+              <span className={ytdChange >= 0 ? "text-terminal-green" : "text-terminal-red"}>
+                {ytdChange >= 0 ? "+" : ""}{(price - low52).toFixed(2)}/{ytdChange >= 0 ? "+" : ""}{ytdChange.toFixed(2)}%
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-white">Mkt Cap (USD)</span>
@@ -104,7 +129,7 @@ export default function OverviewTab({ ticker, companyName, quoteData, profile }:
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-white">Shrs Out/Float</span>
-              <span className="text-terminal-white">{(sharesOut / 1e9).toFixed(2)}B/{(floatShares / 1e9).toFixed(2)}B</span>
+              <span className="text-terminal-white">{sharesOut > 0 ? `${(sharesOut / 1e9).toFixed(2)}B/${(floatShares / 1e9).toFixed(2)}B` : "N/A"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-white">SI/% of Float</span>
@@ -123,7 +148,7 @@ export default function OverviewTab({ ticker, companyName, quoteData, profile }:
           <div className="text-xs space-y-1 mt-2">
             <div className="flex justify-between">
               <span className="text-terminal-cyan">Date (E)</span>
-              <span className="text-terminal-white">2025/FY</span>
+              <span className="text-terminal-white">{new Date().getFullYear()}/FY</span>
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-cyan">P/E</span>
@@ -131,7 +156,7 @@ export default function OverviewTab({ ticker, companyName, quoteData, profile }:
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-cyan">Est P/E</span>
-              <span className="text-terminal-white">{estPe.toFixed(2)}</span>
+              <span className="text-terminal-white">{typeof estPe === 'number' ? estPe.toFixed(2) : estPe}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-green">T12M EPS (USD)</span>
@@ -139,11 +164,11 @@ export default function OverviewTab({ ticker, companyName, quoteData, profile }:
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-cyan">Est EPS</span>
-              <span className="text-terminal-white">{estEps.toFixed(2)}</span>
+              <span className="text-terminal-white">{typeof estEps === 'number' ? estEps.toFixed(2) : estEps}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-cyan">Est PEG</span>
-              <span className="text-terminal-white">{estPeg}</span>
+              <span className="text-terminal-white">N.A.</span>
             </div>
           </div>
 
@@ -152,9 +177,9 @@ export default function OverviewTab({ ticker, companyName, quoteData, profile }:
           <div className="text-xs space-y-1 mt-2">
             <div className="flex justify-between">
               <span className="text-terminal-green">Ind Gross Yield</span>
-              <span className="text-terminal-white">{divYield}</span>
+              <span className="text-terminal-white">{divYieldTTM > 0 ? divYieldTTM.toFixed(2) + "%" : "N.A."}</span>
             </div>
-            <span className="text-terminal-dim text-[11px]">Cash dividend discontinued</span>
+            <span className="text-terminal-dim text-[11px]">{divYieldTTM > 0 ? "" : "Cash dividend discontinued"}</span>
           </div>
         </div>
 
@@ -166,10 +191,10 @@ export default function OverviewTab({ ticker, companyName, quoteData, profile }:
               <span className="text-terminal-yellow">14) </span>
               <a href={`https://${website}`} className="text-terminal-orange hover:underline" target="_blank" rel="noopener noreferrer">{website}</a>
             </div>
-            <div className="text-terminal-white ml-6">{city}, {state}, {country}</div>
+            <div className="text-terminal-white ml-6">{[city, state, country].filter(Boolean).join(", ")}</div>
             <div className="flex justify-between">
               <span className="text-terminal-yellow">Empls</span>
-              <span className="text-terminal-white">{employees.toLocaleString()}</span>
+              <span className="text-terminal-white">{employees > 0 ? employees.toLocaleString() : "N/A"}</span>
             </div>
           </div>
 
@@ -178,25 +203,20 @@ export default function OverviewTab({ ticker, companyName, quoteData, profile }:
           <div className="text-xs space-y-1 mt-2">
             <div>
               <span className="text-terminal-yellow">16) </span>
-              <span className="text-terminal-white">{ceo}</span>
+              <span className="text-terminal-white">{ceo || "N/A"}</span>
             </div>
             <div className="text-terminal-dim ml-6">President/CEO</div>
-            <div>
-              <span className="text-terminal-yellow">17) </span>
-              <span className="text-terminal-white">Colette Kress</span>
-            </div>
-            <div className="text-terminal-dim ml-6">CFO</div>
           </div>
 
           {/* Returns */}
           <div className="mt-4 text-xs space-y-1">
             <div className="flex justify-between">
               <span className="text-terminal-white">12M Tot Ret</span>
-              <span className="text-terminal-green">{totRet12m}</span>
+              <span className={ytdChange >= 0 ? "text-terminal-green" : "text-terminal-red"}>{ytdChange.toFixed(2)}%</span>
             </div>
             <div className="flex justify-between">
               <span className="text-terminal-white">Beta vs SPX</span>
-              <span className="text-terminal-white">{betaVsSPX}</span>
+              <span className="text-terminal-white">N/A</span>
             </div>
           </div>
         </div>

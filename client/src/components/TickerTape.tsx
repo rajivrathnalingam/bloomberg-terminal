@@ -1,7 +1,36 @@
+import { useState, useEffect } from "react";
 import { TICKER_TAPE_DATA } from "@/lib/mockData";
 
+interface TapeItem {
+  symbol: string;
+  price: number;
+  change: number;
+  pct: number;
+}
+
 export default function TickerTape() {
-  const items = [...TICKER_TAPE_DATA, ...TICKER_TAPE_DATA]; // Double for seamless loop
+  const [data, setData] = useState<TapeItem[]>(TICKER_TAPE_DATA);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchTape() {
+      try {
+        const res = await fetch("/api/ticker-tape");
+        if (res.ok && !cancelled) {
+          const items = await res.json();
+          if (items.length > 0) setData(items);
+        }
+      } catch {
+        // Keep mock data on error
+      }
+    }
+    fetchTape();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchTape, 60000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  const items = [...data, ...data]; // Double for seamless loop
 
   return (
     <div className="bg-terminal-bg border-t border-[#222220] overflow-hidden h-[22px] flex items-center">

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { TabId } from "@/lib/types";
 
 interface TerminalHeaderProps {
@@ -21,6 +21,14 @@ interface TerminalHeaderProps {
   pageTitle: string;
 }
 
+interface LookupResult {
+  symbol?: string;
+  Symbol?: string;
+  name?: string;
+  Name?: string;
+  [key: string]: unknown;
+}
+
 const TABS: { id: TabId; label: string; key: string }[] = [
   { id: "home", label: "HOME", key: "0" },
   { id: "overview", label: "OVERVIEW", key: "1" },
@@ -41,16 +49,77 @@ export default function TerminalHeader({
   pageTitle,
 }: TerminalHeaderProps) {
   const [inputValue, setInputValue] = useState(ticker);
+  const [suggestions, setSuggestions] = useState<LookupResult[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setInputValue(ticker);
   }, [ticker]);
 
+  // Debounced ticker lookup
+  const lookupTicker = useCallback((query: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/ticker-lookup?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setSuggestions(data.slice(0, 8));
+            setShowSuggestions(true);
+            setSelectedIdx(-1);
+          } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+          }
+        }
+      } catch {
+        setSuggestions([]);
+      }
+    }, 300);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.toUpperCase();
+    setInputValue(val);
+    lookupTicker(val);
+  };
+
+  const selectTicker = (symbol: string) => {
+    setInputValue(symbol);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    onTickerChange(symbol);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim()) {
-      onTickerChange(inputValue.trim().toUpperCase());
+    if (selectedIdx >= 0 && suggestions[selectedIdx]) {
+      const sym = suggestions[selectedIdx].symbol || suggestions[selectedIdx].Symbol || inputValue;
+      selectTicker(String(sym));
+    } else if (inputValue.trim()) {
+      selectTicker(inputValue.trim().toUpperCase());
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIdx(prev => Math.min(prev + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIdx(prev => Math.max(prev - 1, -1));
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
     }
   };
 
@@ -88,7 +157,6 @@ export default function TerminalHeader({
           <span className={priceColor}>
             {quoteData ? `${quoteData.change >= 0 ? "+" : ""}${quoteData.change.toFixed(2)}` : "---"}
           </span>
-          {/* Mini sparkline placeholder */}
           <svg width="60" height="16" className="ml-1">
             <polyline
               fill="none"
@@ -137,19 +205,44 @@ export default function TerminalHeader({
         <span className="ml-auto text-[10px] text-terminal-dim">Press 0-6 to navigate · Type ticker to search</span>
       </div>
 
-      {/* Ticker Input */}
-      <div className="bg-terminal-bg px-3 py-1 border-b border-[#333330]">
+      {/* Ticker Input with Autocomplete */}
+      <div className="bg-terminal-bg px-3 py-1 border-b border-[#333330] relative">
         <form onSubmit={handleSubmit} className="w-full">
           <input
             ref={inputRef}
             data-testid="ticker-input"
             type="text"
             value={inputValue}
-            onChange={e => setInputValue(e.target.value.toUpperCase())}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+            onBlur={() => { setTimeout(() => setShowSuggestions(false), 200); }}
             className="terminal-input w-full"
-            placeholder="Type ticker to search..."
+            placeholder="Type any ticker or company name to search..."
           />
         </form>
+
+        {/* Autocomplete Dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute left-3 right-3 top-full z-50 bg-[#1a1a18] border border-[#333330] max-h-60 overflow-y-auto">
+            {suggestions.map((s, idx) => {
+              const sym = String(s.symbol || s.Symbol || s.ticker || s.Ticker || "");
+              const name = String(s.name || s.Name || s.companyName || "");
+              return (
+                <div
+                  key={idx}
+                  className={`px-3 py-1.5 text-xs cursor-pointer flex items-center gap-3 ${
+                    idx === selectedIdx ? "bg-[#0055aa]" : "hover:bg-[rgba(255,255,255,0.05)]"
+                  }`}
+                  onMouseDown={() => selectTicker(sym)}
+                >
+                  <span className="text-terminal-orange font-bold w-16">{sym}</span>
+                  <span className="text-terminal-white truncate">{name}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

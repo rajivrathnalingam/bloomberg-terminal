@@ -1,36 +1,65 @@
-import { useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PEER_DATA, generateNormalizedPrices } from "@/lib/mockData";
 
 interface RelValueTabProps {
   ticker: string;
 }
 
-const PEER_COLORS: Record<string, string> = {
-  "NVDA": "#3399ff",
-  "AMD": "#ff6666",
-  "INTC": "#cc6633",
-  "AVGO": "#33cc33",
-  "QCOM": "#cc33cc",
-  "TXN": "#cc9933",
-  "MRVL": "#3399cc",
-  "ARM": "#ff3333",
-};
+interface PeerData {
+  symbol: string;
+  name: string;
+  marketCap: number;
+  price: number;
+  change1d: number;
+  change1m: number;
+  revenueGrowth: number;
+  epsGrowth: number;
+  pe: number;
+  roe: number;
+  dividendYield: number;
+}
+
+const COLORS = [
+  "#3399ff", "#ff6666", "#cc6633", "#33cc33",
+  "#cc33cc", "#cc9933", "#3399cc", "#ff3333",
+  "#66ccff", "#99ff66",
+];
 
 export default function RelValueTab({ ticker }: RelValueTabProps) {
-  const peers = useMemo(() => PEER_DATA.map(p => p.symbol), []);
+  const [peerData, setPeerData] = useState<PeerData[]>(PEER_DATA);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    async function fetchPeers() {
+      try {
+        const res = await fetch(`/api/peers/${ticker}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setPeerData(data);
+          }
+        }
+      } catch {
+        // Keep mock data
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchPeers();
+    return () => { cancelled = true; };
+  }, [ticker]);
+
+  const peers = useMemo(() => peerData.map(p => p.symbol), [peerData]);
   const normalizedPrices = useMemo(() => generateNormalizedPrices(peers), [peers]);
 
-  const medianData = {
-    marketCap: "212.00B",
-    price: "170.92",
-    change1d: "1.50%",
-    change1m: "3.91%",
-    revGrowth: "13.66%",
-    epsGrowth: "5.56%",
-    pe: "66.24",
-    roe: "26.13%",
-    divYield: "0.73%",
-  };
+  const peerColors: Record<string, string> = {};
+  peerData.forEach((p, i) => {
+    peerColors[p.symbol] = COLORS[i % COLORS.length];
+  });
 
   const formatMktCap = (v: number) => {
     if (v >= 1e12) return (v / 1e12).toFixed(2) + "T";
@@ -39,7 +68,6 @@ export default function RelValueTab({ ticker }: RelValueTabProps) {
     return v.toFixed(0);
   };
 
-  // Draw normalized chart
   const chartHeight = 200;
   const chartWidth = 800;
 
@@ -85,7 +113,7 @@ export default function RelValueTab({ ticker }: RelValueTabProps) {
               <polyline
                 key={symbol}
                 fill="none"
-                stroke={PEER_COLORS[symbol] || "#666"}
+                stroke={peerColors[symbol] || "#666"}
                 strokeWidth={symbol === ticker ? "2" : "1"}
                 opacity={symbol === ticker ? 1 : 0.6}
                 points={points}
@@ -95,10 +123,10 @@ export default function RelValueTab({ ticker }: RelValueTabProps) {
         </svg>
 
         {/* Legend */}
-        <div className="flex items-center gap-3 justify-center mt-1">
+        <div className="flex items-center gap-3 justify-center mt-1 flex-wrap">
           {peers.map(symbol => (
             <label key={symbol} className="flex items-center gap-1 text-[10px] cursor-pointer">
-              <span className="inline-block w-3 h-3 border" style={{ borderColor: PEER_COLORS[symbol], backgroundColor: symbol === ticker ? PEER_COLORS[symbol] : 'transparent' }} />
+              <span className="inline-block w-3 h-3 border" style={{ borderColor: peerColors[symbol], backgroundColor: symbol === ticker ? peerColors[symbol] : 'transparent' }} />
               <span className="text-terminal-white">{symbol}</span>
             </label>
           ))}
@@ -107,6 +135,7 @@ export default function RelValueTab({ ticker }: RelValueTabProps) {
 
       {/* Peer Comparison Table */}
       <div className="text-xs font-bold text-terminal-white mb-2 mt-4">PEER COMPARISON</div>
+      {loading && <div className="text-terminal-yellow text-xs mb-2">Loading peer data...</div>}
       <table className="terminal-table">
         <thead>
           <tr>
@@ -115,54 +144,22 @@ export default function RelValueTab({ ticker }: RelValueTabProps) {
             <th className="text-right">Mkt Cap<br />(USD)</th>
             <th className="text-right">Last Px<br />(USD)</th>
             <th className="text-right">Chg Pct<br />1D</th>
-            <th className="text-right">Chg Pct<br />1M</th>
-            <th className="text-right">Rev - 1<br />Yr Gr:Y</th>
-            <th className="text-right">EPS - 1<br />Yr Gr:Y</th>
             <th className="text-right">P/E</th>
-            <th className="text-right">ROE</th>
-            <th className="text-right">Dvd 12M<br />Yld</th>
           </tr>
         </thead>
         <tbody>
-          {/* Median Row */}
-          <tr className="bg-[rgba(255,255,255,0.04)]">
-            <td></td>
-            <td className="font-bold text-terminal-white">Median</td>
-            <td className="text-right text-terminal-yellow">{medianData.marketCap}</td>
-            <td className="text-right text-terminal-yellow">{medianData.price}</td>
-            <td className="text-right text-terminal-green">{medianData.change1d}</td>
-            <td className="text-right text-terminal-green">{medianData.change1m}</td>
-            <td className="text-right text-terminal-green">{medianData.revGrowth}</td>
-            <td className="text-right text-terminal-green">{medianData.epsGrowth}</td>
-            <td className="text-right text-terminal-yellow">{medianData.pe}</td>
-            <td className="text-right text-terminal-yellow">{medianData.roe}</td>
-            <td className="text-right text-terminal-yellow">{medianData.divYield}</td>
-          </tr>
-
-          {/* Peer rows */}
-          {PEER_DATA.map((peer, idx) => (
+          {peerData.map((peer, idx) => (
             <tr key={peer.symbol} className={peer.symbol === ticker ? "highlighted" : ""}>
               <td className="text-terminal-dim">{101 + idx})</td>
               <td className={peer.symbol === ticker ? "text-terminal-orange font-bold" : "text-terminal-orange"}>
-                {peer.name}
+                {peer.name || peer.symbol}
               </td>
-              <td className="text-right text-terminal-white">{formatMktCap(peer.marketCap)}</td>
-              <td className="text-right text-terminal-white">{peer.price.toFixed(2)}</td>
+              <td className="text-right text-terminal-white">{peer.marketCap > 0 ? formatMktCap(peer.marketCap) : "—"}</td>
+              <td className="text-right text-terminal-white">{peer.price > 0 ? peer.price.toFixed(2) : "—"}</td>
               <td className={`text-right ${peer.change1d >= 0 ? "text-terminal-green" : "text-terminal-red"}`}>
-                {peer.change1d.toFixed(2)}%
-              </td>
-              <td className={`text-right ${peer.change1m >= 0 ? "text-terminal-green" : "text-terminal-red"}`}>
-                {peer.change1m.toFixed(2)}%
-              </td>
-              <td className={`text-right ${peer.revenueGrowth > 0 ? "text-terminal-green" : peer.revenueGrowth < 0 ? "text-terminal-red" : "text-terminal-dim"}`}>
-                {peer.revenueGrowth ? peer.revenueGrowth.toFixed(2) + "%" : "—"}
-              </td>
-              <td className={`text-right ${peer.epsGrowth > 0 ? "text-terminal-green" : peer.epsGrowth < 0 ? "text-terminal-red" : "text-terminal-dim"}`}>
-                {peer.epsGrowth ? peer.epsGrowth.toFixed(2) + "%" : "—"}
+                {peer.change1d !== 0 ? peer.change1d.toFixed(2) + "%" : "—"}
               </td>
               <td className="text-right text-terminal-white">{peer.pe > 0 ? peer.pe.toFixed(2) : "—"}</td>
-              <td className="text-right text-terminal-white">{peer.roe ? peer.roe.toFixed(2) + "%" : "—"}</td>
-              <td className="text-right text-terminal-white">{peer.dividendYield > 0 ? peer.dividendYield.toFixed(2) + "%" : "—"}</td>
             </tr>
           ))}
         </tbody>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { INSTITUTIONAL_HOLDERS, INSIDER_TRANSACTIONS, DEBT_DATA } from "@/lib/mockData";
 
 interface OwnershipTabProps {
@@ -40,29 +40,57 @@ export default function OwnershipTab({ ticker }: OwnershipTabProps) {
 }
 
 function CurrentHolders({ ticker }: { ticker: string }) {
+  const [holders, setHolders] = useState(INSTITUTIONAL_HOLDERS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    async function fetchHolders() {
+      try {
+        const res = await fetch(`/api/holdings/${ticker}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (data.institutionalHolders && data.institutionalHolders.length > 0) {
+            setHolders(data.institutionalHolders);
+          }
+        }
+      } catch { /* keep mock */ }
+      finally { if (!cancelled) setLoading(false); }
+    }
+    fetchHolders();
+    return () => { cancelled = true; };
+  }, [ticker]);
+
   return (
     <div>
       <div className="flex items-center gap-4 text-xs mb-3 bg-[rgba(255,255,255,0.02)] p-2">
         <span>Ticker <span className="text-terminal-yellow font-bold">{ticker}</span></span>
-        <span>Shrs Out <span className="text-terminal-yellow font-bold">24.30B</span></span>
-        <span>Inst % Out <span className="text-terminal-yellow font-bold">42.94%</span></span>
-        <span>Holders <span className="text-terminal-yellow font-bold">50</span></span>
-        <span>Source <span className="text-terminal-yellow font-bold">13F/SEC EDGAR (Q4 2025)</span></span>
+        <span>Holders <span className="text-terminal-yellow font-bold">{holders.length}</span></span>
+        <span>Source <span className="text-terminal-yellow font-bold">SEC EDGAR</span></span>
       </div>
+
+      {loading && <div className="text-terminal-yellow text-xs mb-2">Loading holders...</div>}
 
       <table className="terminal-table">
         <thead>
           <tr>
             <th className="w-8">#</th>
             <th>Holder Name</th>
+            <th className="text-right">Shares</th>
+            <th className="text-right">Value</th>
+            <th className="text-right">%</th>
             <th className="text-right">Source</th>
           </tr>
         </thead>
         <tbody>
-          {INSTITUTIONAL_HOLDERS.map((holder, idx) => (
-            <tr key={idx} className={idx === 2 ? "highlighted" : ""}>
+          {holders.map((holder, idx) => (
+            <tr key={idx} className={idx === 0 ? "highlighted" : ""}>
               <td className="text-terminal-dim">{idx + 1}</td>
               <td className="text-terminal-orange">{holder.name}</td>
+              <td className="text-right text-terminal-white">{holder.shares > 0 ? holder.shares.toLocaleString() : "—"}</td>
+              <td className="text-right text-terminal-white">{holder.value > 0 ? "$" + (holder.value / 1e6).toFixed(1) + "M" : "—"}</td>
+              <td className="text-right text-terminal-yellow">{holder.percentage > 0 ? holder.percentage.toFixed(2) + "%" : "—"}</td>
               <td className="text-right text-terminal-white">{holder.source}</td>
             </tr>
           ))}
@@ -73,14 +101,41 @@ function CurrentHolders({ ticker }: { ticker: string }) {
 }
 
 function InsiderTransactionsView({ ticker }: { ticker: string }) {
+  const [transactions, setTransactions] = useState(INSIDER_TRANSACTIONS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    async function fetchInsider() {
+      try {
+        const res = await fetch(`/api/holdings/${ticker}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (data.insiderTransactions && data.insiderTransactions.length > 0) {
+            setTransactions(data.insiderTransactions);
+          }
+        }
+      } catch { /* keep mock */ }
+      finally { if (!cancelled) setLoading(false); }
+    }
+    fetchInsider();
+    return () => { cancelled = true; };
+  }, [ticker]);
+
+  const buys = transactions.filter(t => t.shares > 0).length;
+  const sells = transactions.filter(t => t.shares < 0 || t.type?.toLowerCase().includes('sale')).length;
+
   return (
     <div>
       <div className="flex items-center gap-4 text-xs mb-3 bg-[rgba(255,255,255,0.02)] p-2">
         <span>Ticker <span className="text-terminal-yellow font-bold">{ticker}</span></span>
-        <span>Transactions <span className="text-terminal-yellow font-bold">50</span></span>
-        <span>Buys <span className="text-terminal-white font-bold">0</span></span>
-        <span>Sells <span className="text-terminal-yellow font-bold">50</span></span>
+        <span>Transactions <span className="text-terminal-yellow font-bold">{transactions.length}</span></span>
+        <span>Buys <span className="text-terminal-green font-bold">{buys}</span></span>
+        <span>Sells <span className="text-terminal-red font-bold">{sells}</span></span>
       </div>
+
+      {loading && <div className="text-terminal-yellow text-xs mb-2">Loading insider transactions...</div>}
 
       <table className="terminal-table">
         <thead>
@@ -94,14 +149,16 @@ function InsiderTransactionsView({ ticker }: { ticker: string }) {
           </tr>
         </thead>
         <tbody>
-          {INSIDER_TRANSACTIONS.slice(0, 20).map((tx, idx) => (
+          {transactions.slice(0, 30).map((tx, idx) => (
             <tr key={idx}>
               <td className="text-terminal-dim">{idx + 1}</td>
               <td className="text-terminal-orange">{tx.name}</td>
               <td className="text-terminal-white">{tx.title}</td>
               <td className="text-right text-terminal-white">{tx.date}</td>
-              <td className="text-right text-terminal-red">{tx.shares.toLocaleString()}</td>
-              <td className="text-right text-terminal-white">${tx.price.toFixed(0)}.</td>
+              <td className={`text-right ${tx.shares >= 0 ? "text-terminal-green" : "text-terminal-red"}`}>
+                {tx.shares.toLocaleString()}
+              </td>
+              <td className="text-right text-terminal-white">${typeof tx.price === 'number' ? tx.price.toFixed(2) : tx.price}</td>
             </tr>
           ))}
         </tbody>
@@ -111,13 +168,59 @@ function InsiderTransactionsView({ ticker }: { ticker: string }) {
 }
 
 function DebtView({ ticker }: { ticker: string }) {
+  const [debtData, setDebtData] = useState(DEBT_DATA);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    async function fetchDebt() {
+      try {
+        const res = await fetch(`/api/financials/${ticker}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          const bs = data.balanceSheet || [];
+          if (bs.length > 0) {
+            const formatted = bs.map((row: any) => {
+              const period = row.period || (row.date ? row.date.substring(0, 4) + "-FY" : "");
+              const fmtB = (v: number) => v ? "$" + (Math.abs(v) / 1e9).toFixed(1) + "B" : "$0.0B";
+              const equity = row.totalStockholdersEquity || 1;
+              const assets = row.totalAssets || 1;
+              const debt = row.totalDebt || 0;
+              const liabilities = row.totalLiabilities || 0;
+              return {
+                year: period,
+                totalDebt: fmtB(debt),
+                currentDebt: fmtB(row.shortTermDebt || 0),
+                longTermDebt: fmtB(row.longTermDebt || 0),
+                totalLiabilities: fmtB(liabilities),
+                currentLiabilities: fmtB(row.totalCurrentLiabilities || 0),
+                nonCurrentLiabilities: fmtB(row.totalNonCurrentLiabilities || 0),
+                totalAssets: fmtB(row.totalAssets || 0),
+                shareholdersEquity: fmtB(equity),
+                debtEquityRatio: equity > 0 ? ((debt / equity) * 100).toFixed(1) + "%" : "N/A",
+                debtAssetsRatio: assets > 0 ? ((debt / assets) * 100).toFixed(1) + "%" : "N/A",
+                liabilitiesAssets: assets > 0 ? ((liabilities / assets) * 100).toFixed(1) + "%" : "N/A",
+              };
+            });
+            setDebtData(formatted);
+          }
+        }
+      } catch { /* keep mock */ }
+      finally { if (!cancelled) setLoading(false); }
+    }
+    fetchDebt();
+    return () => { cancelled = true; };
+  }, [ticker]);
+
   return (
     <div>
+      {loading && <div className="text-terminal-yellow text-xs mb-2">Loading debt data...</div>}
       <table className="terminal-table">
         <thead>
           <tr>
             <th>Line Item</th>
-            {DEBT_DATA.map(d => (
+            {debtData.map(d => (
               <th key={d.year} className="text-right">{d.year}</th>
             ))}
           </tr>
@@ -138,7 +241,7 @@ function DebtView({ ticker }: { ticker: string }) {
           ].map(row => (
             <tr key={row.key}>
               <td className={row.color}>{row.label}</td>
-              {DEBT_DATA.map(d => (
+              {debtData.map(d => (
                 <td key={d.year} className="text-right text-terminal-white">
                   {(d as any)[row.key]}
                 </td>

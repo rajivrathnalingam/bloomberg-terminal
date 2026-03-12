@@ -1,25 +1,53 @@
-import { TICKER_TAPE_DATA } from "@/lib/mockData";
+import { useState, useEffect } from "react";
 
 interface HomeTabProps {
   onTickerChange: (ticker: string) => void;
   onTabChange: (tab: any) => void;
 }
 
+interface TapeItem {
+  symbol: string;
+  price: number;
+  change: number;
+  pct: number;
+}
+
 export default function HomeTab({ onTickerChange, onTabChange }: HomeTabProps) {
-  const marketIndices = [
-    { name: "S&P 500", ticker: "SPY", price: 692.36, change: 5.02, pct: 0.73 },
-    { name: "NASDAQ 100", ticker: "QQQ", price: 615.37, change: 7.54, pct: 1.24 },
-    { name: "DOW JONES", ticker: "DIA", price: 440.23, change: 2.15, pct: 0.49 },
-    { name: "RUSSELL 2000", ticker: "IWM", price: 224.67, change: 1.89, pct: 0.85 },
+  const [tapeData, setTapeData] = useState<TapeItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchTape() {
+      try {
+        const res = await fetch("/api/ticker-tape");
+        if (res.ok && !cancelled) {
+          const items = await res.json();
+          if (items.length > 0) setTapeData(items);
+        }
+      } catch { /* use empty */ }
+    }
+    fetchTape();
+    return () => { cancelled = true; };
+  }, []);
+
+  const marketIndices = tapeData.filter(t => ["SPY", "QQQ"].includes(t.symbol));
+  const indexDisplay = [
+    { name: "S&P 500", ticker: "SPY", ...findTicker("SPY") },
+    { name: "NASDAQ 100", ticker: "QQQ", ...findTicker("QQQ") },
+    { name: "DOW JONES", ticker: "DIA", price: 0, change: 0, pct: 0 },
+    { name: "RUSSELL 2000", ticker: "IWM", price: 0, change: 0, pct: 0 },
   ];
 
-  const topMovers = [
-    { symbol: "MSFT", name: "Microsoft", change: 2.49 },
-    { symbol: "NVDA", name: "Nvidia", change: 1.99 },
-    { symbol: "META", name: "Meta Platforms", change: 1.52 },
-    { symbol: "TSLA", name: "Tesla", change: 1.26 },
-    { symbol: "AAPL", name: "Apple", change: 0.80 },
-  ];
+  function findTicker(sym: string): { price: number; change: number; pct: number } {
+    const found = tapeData.find(t => t.symbol === sym);
+    return found ? { price: found.price, change: found.change, pct: found.pct } : { price: 0, change: 0, pct: 0 };
+  }
+
+  // Top movers from tape data, sorted by absolute change
+  const topMovers = tapeData
+    .filter(t => !["SPY", "QQQ"].includes(t.symbol))
+    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
+    .slice(0, 5);
 
   const watchlist = ["NVDA", "AAPL", "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AMD", "AVGO", "CRM"];
 
@@ -36,7 +64,7 @@ export default function HomeTab({ onTickerChange, onTabChange }: HomeTabProps) {
         <div>
           <div className="section-header mb-2">Market Overview</div>
           <div className="space-y-1">
-            {marketIndices.map(idx => (
+            {indexDisplay.map(idx => (
               <div
                 key={idx.ticker}
                 className="flex items-center justify-between text-xs py-1.5 px-2 hover:bg-[rgba(255,255,255,0.03)] cursor-pointer"
@@ -47,9 +75,9 @@ export default function HomeTab({ onTickerChange, onTabChange }: HomeTabProps) {
                   <span className="text-terminal-dim ml-2">{idx.ticker}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-terminal-white">{idx.price.toFixed(2)}</span>
+                  <span className="text-terminal-white">{idx.price > 0 ? idx.price.toFixed(2) : "—"}</span>
                   <span className={idx.change >= 0 ? "text-terminal-green" : "text-terminal-red"}>
-                    {idx.change >= 0 ? "+" : ""}{idx.change.toFixed(2)} ({idx.pct.toFixed(2)}%)
+                    {idx.price > 0 ? `${idx.change >= 0 ? "+" : ""}${idx.change.toFixed(2)} (${idx.pct.toFixed(2)}%)` : ""}
                   </span>
                 </div>
               </div>
@@ -69,10 +97,9 @@ export default function HomeTab({ onTickerChange, onTabChange }: HomeTabProps) {
               >
                 <div>
                   <span className="text-terminal-orange font-bold">{m.symbol}</span>
-                  <span className="text-terminal-dim ml-2">{m.name}</span>
                 </div>
-                <span className={m.change >= 0 ? "text-terminal-green" : "text-terminal-red"}>
-                  {m.change >= 0 ? "+" : ""}{m.change.toFixed(2)}%
+                <span className={m.pct >= 0 ? "text-terminal-green" : "text-terminal-red"}>
+                  {m.pct >= 0 ? "+" : ""}{m.pct.toFixed(2)}%
                 </span>
               </div>
             ))}
