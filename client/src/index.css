@@ -1,0 +1,319 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Bloomberg Terminal Dark Theme - Always dark */
+:root {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  /* Terminal dark background */
+  --background: 0 0% 4%;
+  --foreground: 35 20% 80%;
+
+  /* Borders */
+  --border: 35 15% 18%;
+
+  /* Cards */
+  --card: 0 0% 6%;
+  --card-foreground: 35 20% 80%;
+  --card-border: 35 10% 15%;
+
+  /* Sidebar */
+  --sidebar: 0 0% 5%;
+  --sidebar-foreground: 35 20% 80%;
+  --sidebar-border: 35 10% 12%;
+  --sidebar-primary: 35 100% 50%;
+  --sidebar-primary-foreground: 0 0% 4%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 35 20% 80%;
+  --sidebar-ring: 35 100% 50%;
+
+  /* Popover */
+  --popover: 0 0% 8%;
+  --popover-foreground: 35 20% 80%;
+  --popover-border: 35 10% 15%;
+
+  /* Primary - Bloomberg Orange/Yellow */
+  --primary: 35 100% 50%;
+  --primary-foreground: 0 0% 4%;
+
+  /* Secondary */
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 35 20% 80%;
+
+  /* Muted */
+  --muted: 0 0% 14%;
+  --muted-foreground: 35 10% 55%;
+
+  /* Accent */
+  --accent: 220 60% 35%;
+  --accent-foreground: 0 0% 98%;
+
+  /* Destructive */
+  --destructive: 0 80% 50%;
+  --destructive-foreground: 0 0% 98%;
+
+  /* Input */
+  --input: 35 10% 18%;
+  --ring: 35 100% 50%;
+
+  /* Chart colors */
+  --chart-1: 200 80% 55%;
+  --chart-2: 35 100% 50%;
+  --chart-3: 120 60% 45%;
+  --chart-4: 0 80% 55%;
+  --chart-5: 280 60% 55%;
+
+  /* Terminal specific colors */
+  --terminal-red: #ff3333;
+  --terminal-green: #00cc00;
+  --terminal-yellow: #ffcc00;
+  --terminal-orange: #ff9900;
+  --terminal-blue: #3399ff;
+  --terminal-cyan: #00cccc;
+  --terminal-white: #ccccaa;
+  --terminal-dim: #666655;
+  --terminal-bg: #0a0a08;
+  --terminal-surface: #111110;
+  --terminal-header-bg: #cc0000;
+  --terminal-tab-active: #0055aa;
+  --terminal-tab-bg: #222220;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+  --radius: 0.125rem;
+
+  --shadow-2xs: none;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+/* Force dark always */
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+  --background: 0 0% 4%;
+  --foreground: 35 20% 80%;
+  --border: 35 15% 18%;
+  --card: 0 0% 6%;
+  --card-foreground: 35 20% 80%;
+  --card-border: 35 10% 15%;
+  --sidebar: 0 0% 5%;
+  --sidebar-foreground: 35 20% 80%;
+  --sidebar-border: 35 10% 12%;
+  --sidebar-primary: 35 100% 50%;
+  --sidebar-primary-foreground: 0 0% 4%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 35 20% 80%;
+  --sidebar-ring: 35 100% 50%;
+  --popover: 0 0% 8%;
+  --popover-foreground: 35 20% 80%;
+  --popover-border: 35 10% 15%;
+  --primary: 35 100% 50%;
+  --primary-foreground: 0 0% 4%;
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 35 20% 80%;
+  --muted: 0 0% 14%;
+  --muted-foreground: 35 10% 55%;
+  --accent: 220 60% 35%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 80% 50%;
+  --destructive-foreground: 0 0% 98%;
+  --input: 35 10% 18%;
+  --ring: 35 100% 50%;
+  --chart-1: 200 80% 55%;
+  --chart-2: 35 100% 50%;
+  --chart-3: 120 60% 45%;
+  --chart-4: 0 80% 55%;
+  --chart-5: 280 60% 55%;
+  --shadow-2xs: none;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-mono antialiased;
+    background-color: var(--terminal-bg);
+    color: var(--terminal-white);
+    font-size: 13px;
+    line-height: 1.4;
+    overflow: hidden;
+  }
+}
+
+/* Terminal monospace font for everything */
+* {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--terminal-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #333330;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #444440;
+}
+
+/* Terminal ticker tape animation */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-tape {
+  animation: ticker-scroll 60s linear infinite;
+}
+
+/* Sparkline mini chart */
+.sparkline-up { color: var(--terminal-green); }
+.sparkline-down { color: var(--terminal-red); }
+
+/* Terminal text colors */
+.text-terminal-red { color: var(--terminal-red); }
+.text-terminal-green { color: var(--terminal-green); }
+.text-terminal-yellow { color: var(--terminal-yellow); }
+.text-terminal-orange { color: var(--terminal-orange); }
+.text-terminal-blue { color: var(--terminal-blue); }
+.text-terminal-cyan { color: var(--terminal-cyan); }
+.text-terminal-white { color: var(--terminal-white); }
+.text-terminal-dim { color: var(--terminal-dim); }
+
+.bg-terminal-bg { background-color: var(--terminal-bg); }
+.bg-terminal-surface { background-color: var(--terminal-surface); }
+.bg-terminal-header { background-color: var(--terminal-header-bg); }
+.bg-terminal-tab-active { background-color: var(--terminal-tab-active); }
+.bg-terminal-tab { background-color: var(--terminal-tab-bg); }
+
+/* Red gradient header bar */
+.terminal-header-bar {
+  background: linear-gradient(180deg, #aa0000 0%, #880000 50%, #660000 100%);
+}
+
+/* Active tab styling */
+.tab-active {
+  background-color: #0055aa;
+  color: white;
+  border: 1px solid #0077cc;
+}
+
+.tab-inactive {
+  background-color: transparent;
+  color: var(--terminal-white);
+  border: 1px solid transparent;
+}
+.tab-inactive:hover {
+  background-color: rgba(255,255,255,0.05);
+}
+
+/* Sub-tab active */
+.subtab-active {
+  background-color: #cc8800;
+  color: #000;
+  font-weight: 600;
+}
+.subtab-inactive {
+  background-color: #333330;
+  color: var(--terminal-white);
+}
+
+/* Table styles */
+.terminal-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.terminal-table th {
+  background-color: #333330;
+  color: var(--terminal-yellow);
+  text-align: left;
+  padding: 4px 8px;
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 1px solid #444440;
+}
+.terminal-table td {
+  padding: 3px 8px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.terminal-table tr:hover {
+  background-color: rgba(255,255,255,0.03);
+}
+.terminal-table tr.highlighted {
+  background-color: rgba(0, 85, 170, 0.3);
+}
+
+/* Section header boxes */
+.section-header {
+  background-color: #333330;
+  border: 1px solid #444440;
+  padding: 2px 8px;
+  font-weight: 600;
+  color: var(--terminal-white);
+  font-size: 12px;
+}
+
+/* Blinking LIVE indicator */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.live-indicator {
+  animation: blink 2s ease-in-out infinite;
+}
+
+/* Mini spark chart area */
+.price-chart-area {
+  background-color: var(--terminal-bg);
+  border: 1px solid #333330;
+}
+
+/* Search input */
+.terminal-input {
+  background-color: #111110;
+  border: 1px solid #cc8800;
+  color: var(--terminal-yellow);
+  padding: 4px 8px;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.terminal-input:focus {
+  border-color: #ffcc00;
+}
+.terminal-input::placeholder {
+  color: #555550;
+}
